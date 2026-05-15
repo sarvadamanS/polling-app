@@ -1,17 +1,25 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
+
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+# Install backend deps
+COPY backend/package*.json ./backend/
+RUN cd backend && npm install
 
-COPY . .
-RUN npm run build
+# Install and build frontend
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
 
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY frontend/ ./frontend/
+RUN cd frontend && npm run build
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy backend source
+COPY backend/ ./backend/
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+RUN cd backend && npx prisma generate
+
+EXPOSE 4000
+
+CMD ["sh", "-c", "cd backend && npx prisma migrate deploy && node prisma/seed.js && node src/server.js"]

@@ -60,14 +60,14 @@ app.use((req, _res, next) => {
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use("/api", routes);
 
-// Static serving only in local dev (not needed in Docker — Nginx handles it)
-if (process.env.NODE_ENV !== "production") {
-  const distPath = path.join(__dirname, "../../frontend/dist");
-  app.use(express.static(distPath));
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-}
+const distPath = path.join(__dirname, "../../frontend/dist");
+app.use(express.static(distPath));
+app.get("*", (_req, res) => {
+  const indexPath = path.join(distPath, "index.html");
+  if (require("fs").existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  }
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
