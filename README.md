@@ -1,4 +1,4 @@
-# Live Poll — Election Voting System
+# 🗳️ Live Poll — Election Voting System
 
 Real-time election polling app. Audience votes once per browser session. Admin logs in and watches results update live via WebSocket.
 
@@ -6,182 +6,26 @@ Real-time election polling app. Audience votes once per browser session. Admin l
 
 ---
 
-## Where does nginx.conf go?
+## 🌐 Live Demo
 
-`frontend/nginx.conf` is copied **into the frontend Docker image** by `frontend/Dockerfile`. It configures Nginx to:
-- Proxy `/api/` requests → backend container
-- Proxy `/socket.io/` WebSocket traffic → backend container
-- Serve React as a SPA (fallback to `index.html`)
+> ⚠️ Hosted on Render free tier — **first load may take 20–30 seconds** to wake up. Just wait and refresh.
 
-You never touch it manually — Docker handles it.
-
----
-
-## Database Strategy
-
-| Environment | Database | How |
-|---|---|---|
-| Local (no Docker) | SQLite | Change one line in `.env`, no install needed |
-| Local (Docker) | PostgreSQL (container) | `docker-compose up` spins it up automatically |
-| Production | Supabase (PostgreSQL) | Paste Supabase connection string into env var |
-
-Prisma schema uses `postgresql` provider. For bare local dev with SQLite, see the note in Step 1 below.
-
----
-
-## Setup — Option A: Local Dev (No Docker)
-
-### Prerequisites
-- Node.js 18+
-
-### 1. Backend
-
-```bash
-cd backend
-cp .env.example .env
-```
-
-Open `.env`. For **SQLite** (easiest local setup, no Postgres needed):
-```
-DATABASE_URL="file:./dev.db"
-```
-
-Then switch the Prisma provider temporarily — open `prisma/schema.prisma` and change:
-```
-provider = "postgresql"
-```
-to:
-```
-provider = "sqlite"
-```
-
-Then run:
-```bash
-npm install
-npx prisma migrate dev --name init
-node prisma/seed.js
-npm run dev
-# Backend running at http://localhost:4000
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-# Frontend running at http://localhost:5173
-```
-
-### 3. Open the app
-
-| URL | Who |
-|-----|-----|
-| http://localhost:5173 | Voters |
-| http://localhost:5173/admin | Admin login |
-| http://localhost:5173/admin/dashboard | Live dashboard |
+| | URL |
+|--|--|
+| 🗳️ Voting Page | https://poll-frontend-m8a2.onrender.com |
+| 🔐 Admin Dashboard | https://poll-frontend-m8a2.onrender.com/admin |
 
 **Admin credentials:** `admin` / `admin123`
 
 ---
 
-## Setup — Option B: Local Dev with Docker (Postgres)
-
-This is the recommended local setup — mirrors production exactly.
-
-### Prerequisites
-- Docker Desktop
-
-### 1. Run everything
-
-```bash
-cd poll-app
-docker-compose up --build
-```
-
-Docker will:
-1. Start a **PostgreSQL 16** container (waits until healthy before backend starts)
-2. Build and start the **backend** — runs `prisma migrate deploy` + seed automatically
-3. Build and start the **frontend** via Nginx
-
-| URL | Who |
-|-----|-----|
-| http://localhost | Voters |
-| http://localhost/admin | Admin login |
-| http://localhost/admin/dashboard | Live dashboard |
-
-### 2. Stop
-
-```bash
-docker-compose down
-```
-
-### 3. Full reset (wipe DB)
-
-```bash
-docker-compose down -v
-docker-compose up --build
-```
-
----
-
-## Setup — Option C: Production with Supabase
-
-### 1. Create a Supabase project
-
-Go to [supabase.com](https://supabase.com) → New project → note your password.
-
-### 2. Get the connection string
-
-In Supabase dashboard: **Settings → Database → Connection string → Session mode (port 5432)**
-
-It looks like:
-```
-postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
-```
-
-### 3. Set environment variables on your host/platform
-
-```bash
-DATABASE_URL="postgresql://postgres.[ref]:[password]@..."
-SESSION_SECRET="a-long-random-string"
-PORT=4000
-CLIENT_ORIGIN="https://your-frontend-domain.com"
-```
-
-### 4. Run migrations against Supabase
-
-```bash
-cd backend
-DATABASE_URL="postgresql://..." npx prisma migrate deploy
-DATABASE_URL="postgresql://..." node prisma/seed.js
-```
-
-### 5. Deploy
-
-- **Backend**: Railway / Render / Fly.io — point to `backend/` folder, set env vars
-- **Frontend**: Vercel / Netlify — point to `frontend/` folder, set `VITE_API_URL` if needed
-
----
-
-## Do you need migration.sql or migration_lock.toml?
-
-**No.** Never write these by hand. Prisma generates them automatically:
-
-- `prisma migrate dev --name init` → creates migration files for you (local dev)
-- `prisma migrate deploy` → applies existing migrations (Docker / production)
-
-The generated `prisma/migrations/` folder should be committed to git so `migrate deploy` works in Docker and production.
-
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-poll-app/
+polling-app/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma          # DB schema (postgresql provider)
+│   │   ├── schema.prisma          # DB schema (PostgreSQL)
 │   │   ├── seed.js                # Seeds admin + 5 nominees
 │   │   └── migrations/            # Auto-generated by Prisma — commit these
 │   ├── src/
@@ -208,7 +52,7 @@ poll-app/
 │   │   ├── hooks/useSocket.js     # Socket.io hook
 │   │   ├── lib/api.js             # Axios instance
 │   │   └── App.jsx
-│   ├── nginx.conf                 # Copied into Docker image — do not edit manually
+│   ├── nginx.conf                 # Bundled into Docker image — proxies API + WebSocket
 │   ├── Dockerfile
 │   └── package.json
 ├── docker-compose.yml
@@ -217,19 +61,157 @@ poll-app/
 
 ---
 
-## API Reference
+## 🚀 Local Setup — Option A: Docker (Recommended)
+
+The easiest way. Spins up PostgreSQL + backend + frontend with one command.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and **running**
+
+### Steps
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/sarvadamanS/polling-app.git
+cd polling-app
+
+# 2. Start everything
+docker compose up --build
+```
+
+Docker will automatically:
+1. Start **PostgreSQL 16** and wait until it's healthy
+2. Run **database migrations** and **seed** (admin + 5 nominees)
+3. Start the **backend** on port 4000
+4. Build and serve the **frontend** via Nginx on port 80
+
+| URL | Who |
+|-----|-----|
+| http://localhost | Voters |
+| http://localhost/admin | Admin login |
+| http://localhost/admin/dashboard | Live dashboard |
+
+**Admin credentials:** `admin` / `admin123`
+
+```bash
+# Stop
+docker compose down
+
+# Stop and wipe database (full reset)
+docker compose down -v
+docker compose up --build
+```
+
+> **Note for Windows users:** Use `docker compose` (with a space), not `docker-compose`.
+
+---
+
+## 💻 Local Setup — Option B: Without Docker (SQLite)
+
+Use this if you don't have Docker installed.
+
+### Prerequisites
+- Node.js 18+
+
+### Steps
+
+**Terminal 1 — Backend:**
+```bash
+cd backend
+cp .env.example .env
+```
+
+Open `backend/.env` and set:
+```
+DATABASE_URL=file:./dev.db
+SESSION_SECRET=any-random-string
+PORT=4000
+CLIENT_ORIGIN=http://localhost:5173
+```
+
+Open `backend/prisma/schema.prisma` and change the provider:
+```prisma
+datasource db {
+  provider = "sqlite"    # change from "postgresql" to "sqlite"
+  url      = env("DATABASE_URL")
+}
+```
+
+Then run:
+```bash
+npm install
+npx prisma migrate dev --name init
+node prisma/seed.js
+npm run dev
+# ✅ Backend running at http://localhost:4000
+```
+
+**Terminal 2 — Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+# ✅ Frontend running at http://localhost:5173
+```
+
+| URL | Who |
+|-----|-----|
+| http://localhost:5173 | Voters |
+| http://localhost:5173/admin | Admin login |
+| http://localhost:5173/admin/dashboard | Live dashboard |
+
+---
+
+## ☁️ Deployment (Render.com)
+
+This app is deployed on Render using:
+- **Web Service** → backend (Node, root dir: `backend`)
+- **Static Site** → frontend (root dir: `frontend`, publish dir: `dist`)
+- **PostgreSQL** → managed database
+
+### Backend environment variables on Render:
+```
+DATABASE_URL       = <Render PostgreSQL internal URL>
+SESSION_SECRET     = <any long random string>
+PORT               = 4000
+CLIENT_ORIGIN      = https://poll-frontend-m8a2.onrender.com
+NODE_ENV           = production
+```
+
+### Backend settings on Render:
+- Build Command: `npm install && npx prisma generate`
+- Start Command: `npx prisma migrate deploy && node prisma/seed.js && node src/server.js`
+
+### Frontend settings on Render:
+- Build Command: `npm install && npm run build`
+- Publish Directory: `dist`
+- Redirects/Rewrites: `/* → /index.html (Rewrite)` ← required for React Router
+
+---
+
+## 📡 API Reference
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | /api/auth/login | Public | Admin login |
 | POST | /api/auth/logout | Public | Admin logout |
-| GET | /api/auth/me | Public | Check session |
+| GET | /api/auth/me | Public | Check session status |
 | GET | /api/nominees | Public | All nominees + vote counts |
 | POST | /api/votes | Public | Cast vote (session-gated) |
 | GET | /api/votes/status | Public | Has this session voted? |
 
-## Socket.io Events
+## 🔌 Socket.io Events
 
 | Event | Direction | Payload |
 |-------|-----------|---------|
 | voteUpdate | Server → Client | `{ totalVotes, nominees[] }` |
+
+---
+
+## 🔑 Key Design Decisions
+
+- **One vote per session** — `express-session` assigns each browser a unique session ID. The `Vote` table uses `sessionId` as a `@unique` field so duplicate votes are rejected at the DB level.
+- **Live updates via Socket.io** — on every successful vote, the backend emits `voteUpdate` to all connected clients. The admin dashboard re-renders charts instantly without polling.
+- **Prisma singleton** — a single `PrismaClient` instance prevents connection pool exhaustion during hot reloads.
+- **Decoupled socket from controllers** — `io` is attached to `req` via middleware so controllers emit events without importing the socket server directly.
+- **nginx.conf** — lives at `frontend/nginx.conf` and is copied into the Docker image at build time. It proxies `/api/` and `/socket.io/` to the backend container and serves React as a SPA.
