@@ -44,7 +44,9 @@ app.use(
     saveUninitialized: true,   // creates session immediately (needed for vote tracking)
     cookie: {
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === "production",  // HTTPS only in prod
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // cross-origin in prod
+      maxAge: 24 * 60 * 60 * 1000,
     },
   })
 );
