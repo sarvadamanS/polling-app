@@ -37,20 +37,22 @@ initSocket(io);
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
-    resave: false,
-    saveUninitialized: true,   // creates session immediately (needed for vote tracking)
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",  // HTTPS only in prod
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // cross-origin in prod
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  })
-);
+app.set("trust proxy", 1);
 
+const isProduction = !!process.env.CLIENT_ORIGIN?.startsWith("https");
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret",
+  resave: false,
+  saveUninitialized: true,
+  proxy: true,
+  cookie: {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 24 * 60 * 60 * 1000,
+  },
+}));
 // Attach io to every request so controllers can emit events without importing io directly
 app.use((req, _res, next) => {
   req.getIO = () => io;
@@ -59,15 +61,6 @@ app.use((req, _res, next) => {
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use("/api", routes);
-
-const distPath = path.join(__dirname, "../../frontend/dist");
-app.use(express.static(distPath));
-app.get("*", (_req, res) => {
-  const indexPath = path.join(distPath, "index.html");
-  if (require("fs").existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  }
-});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
