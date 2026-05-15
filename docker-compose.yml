@@ -1,0 +1,50 @@
+services:
+
+  # ── PostgreSQL database ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: poll_postgres
+    environment:
+      POSTGRES_USER: poll_user
+      POSTGRES_PASSWORD: poll_pass
+      POSTGRES_DB: poll_db
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poll_user -d poll_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Express + Socket.io backend ───────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: poll_backend
+    environment:
+      DATABASE_URL: "postgresql://poll_user:poll_pass@postgres:5432/poll_db"
+      SESSION_SECRET: "docker-secret-change-in-prod"
+      PORT: "4000"
+      CLIENT_ORIGIN: "http://localhost"
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── React frontend served via Nginx ───────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: poll_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
